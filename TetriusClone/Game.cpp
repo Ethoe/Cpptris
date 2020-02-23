@@ -5,6 +5,7 @@ Game::Game()
 	window = NULL;
 	instance = NULL;
 	int i, j, k;
+	//Kick tables for standard pieces
 	int StdSRSt[8][5][2] = { { {0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2} },
 		{ {0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2} }, 
 		{ {0, 0}, {1, 0}, {1, -1}, {0, 2}, {1, 2} }, 
@@ -14,11 +15,9 @@ Game::Game()
 		{ {0, 0}, {-1, 0}, {-1, -1}, {0, 2}, {-1, 2} }, 
 		{ {0, 0}, {-1, 0}, {-1, -1}, {0, 2}, {-1, 2} } };
 	
-	for (i = 0; i < 8; i++)
-		for (j = 0; j < 5; j++)
-			for (k = 0; k < 2; k++)
-				StdSRS[i][j][k] = StdSRSt[i][j][k];
+	memcpy(StdSRS, StdSRSt, sizeof(int) * 8 * 5 * 2);
 
+	//Kick tables for I pieces
 	int ISRSt[8][5][2] = { { {0, 0}, {-2, 0}, {1, 0}, {-2, -1}, {1, 2} },
 		{ {0, 0}, {-1, 0}, {2, 0}, {-1, 2}, {2, -1} },
 		{ {0, 0}, {-1, 0}, {2, 0}, {-1, 2}, {2, -1} },
@@ -28,10 +27,7 @@ Game::Game()
 		{ {0, 0}, {1, 0}, {-2, 0}, {1, -2}, {-2, 1} },
 		{ {0, 0}, {-2, 0}, {1, 0}, {-2, -1}, {1, 2} } };
 	
-	for (i = 0; i < 8; i++)
-		for (j = 0; j < 5; j++)
-			for (k = 0; k < 2; k++)
-				ISRS[i][j][k] = ISRSt[i][j][k];
+	memcpy(ISRS,ISRSt, sizeof(int) * 8 * 5 * 2);
 
 }
 
@@ -54,7 +50,7 @@ bool Game::GameInit()
 	FillRect(bmoMap, &rcTemp, (HBRUSH)GetStockObject(BLACK_BRUSH));
 	ReleaseDC(window, hdc);
 
-	bmoPieces.Load(NULL, L"blocks.bmp");
+	bmoPieces.Load(NULL, L"blocks.bmp"); //Load in textures to use
 	NewGame();
 	return(true);//return success
 }
@@ -69,7 +65,7 @@ void Game::GameLoop()
 	int elapsed = GetTickCount64() - start_time;
 	if (elapsed > 16) //60fps
 	{
-		if (timer == 30)
+		if (timer == 30) //every 30 frames move down one
 		{
 			timer = 0;
 			Move(0, 1);
@@ -82,10 +78,11 @@ void Game::GameLoop()
 
 void Game::NewGame()
 {
-	std::srand(GetTickCount64());
+	std::srand(GetTickCount64()); //Random seed based on time
 	start_time = GetTickCount64();
 	timer = 0;
 	GAMESTARTED = false;
+	//Clear the map
 	for (int x = 0; x < MAPWIDTH; x++)
 	{
 		for (int y = 0; y < TOTALHEIGHT; y++)
@@ -93,6 +90,7 @@ void Game::NewGame()
 			Map[x][y] = MINOBLACK;
 		}
 	}
+	//Create initial bag
 	int i, temp[7];
 	for (i = 0; i < 7; i++)
 		temp[i] = i;
@@ -102,12 +100,14 @@ void Game::NewGame()
 	for (i = 7; i < 14; i++)
 		Bag[i] = temp[i - 7];
 
+	//Spawn in next piece
 	NextPiece();
 	DrawMap();
 }
 
 void Game::DrawTile(int x, int y, int tile)//put a tile
 {
+	//TODO: More draw options (Tileable?)
 	//mask first
 	BitBlt(bmoMap, x * MINOSIZE, y * MINOSIZE, MINOSIZE, MINOSIZE, bmoPieces, tile * MINOSIZE, MINOSIZE, SRCAND);
 	//then image
@@ -154,7 +154,7 @@ void Game::DrawMap()//draw screen
 	for (xmy = 0; xmy < 4; xmy++)
 		for (ymx = 0; ymx < 4; ymx++)
 			if (test.size[xmy][ymx] != MINONODRAW)
-				DrawTile(test.x + xmy + HOLD, test.y + ymx - INVISROWS, test.size[xmy][ymx]);
+				DrawTile(test.x + xmy + HOLD, test.y + ymx - INVISROWS, MINOGREY);//test.size[xmy][ymx]);
 
 	//draw moving block
 	for (xmy = 0; xmy < 4; xmy++)
@@ -168,15 +168,18 @@ void Game::DrawMap()//draw screen
 
 void Game::Hold()
 {
+	//Check to see if current piece has been held
 	if (held)
 		return;
 	if (sHold.hold == -1)
 	{
+		//if hold is empty just get next piece
 		sHold = GenerateTetramino(sCurrent.piece);
 		NextPiece();
 	}
 	else
 	{
+		//otherwise swap
 		Tetramino temp;
 		temp = sHold;
 		sHold = GenerateTetramino(sCurrent.piece);
@@ -184,16 +187,17 @@ void Game::Hold()
 	}
 	sCurrent.x = MAPWIDTH / 2 - 2;
 	sCurrent.y = 1;
-	sCurrent.state = 0;
 	held = 1;
 }
 
 void Game::NewBag()
 {
+	//Generate bag with 2 of each piece
 	int i;
 	for (i = 0; i < 14; i++)
 		Bag[i] = i % 7;
 
+	//Shuffle
 	std::random_shuffle(std::begin(Bag), std::end(Bag));
 	BagCount = 0;
 }
@@ -208,6 +212,7 @@ void Game::NextPiece()
 	//let's see if the game's started yet
 	if (GAMESTARTED == false)
 	{
+		//If game hasn't started fill up the preview pieces
 		GAMESTARTED = true;
 		for (i = 0; i < 4; i++)
 			for (j = 0; j < 4; j++)
@@ -223,6 +228,7 @@ void Game::NextPiece()
 	}
 	else
 	{
+		//Shift all preview peices up
 		sCurrent = sPreviews[0];
 		sCurrent.state = 0;
 		for (i = 0; i < 4; i++)
@@ -309,6 +315,7 @@ Tetramino Game::GenerateTetramino(int piece)
 		result.piviot = 1;
 	}break;
 	}
+	//Init values
 	result.piece = piece;
 	result.state = 0;
 	result.hold = 1;
@@ -317,6 +324,7 @@ Tetramino Game::GenerateTetramino(int piece)
 
 void Game::HardDrop()
 {
+	//Move piece to lowest position then lock it in
 	Tetramino test = sCurrent;
 	FindLowest(test);
 	Lock(test.y - sCurrent.y);
@@ -324,17 +332,13 @@ void Game::HardDrop()
 
 void Game::RotateBlock(bool rotate)
 {
+	//If O piece, no rotation
 	if (sCurrent.piviot == -1)
 	{
 		return;
 	}
-	int i, j, x, y, change, right;
+	int i, j, x, y, change;
 	Tetramino temp = sCurrent;
-
-	if (rotate)
-		right = 1;
-	else
-		right = 0;
 
 	if (rotate)
 		change = -1;
@@ -345,16 +349,16 @@ void Game::RotateBlock(bool rotate)
 		for (j = 0; j < 4; j++)
 			temp.size[i][j] = MINONODRAW;
 
-	if (!rotate)
+	if (!rotate) //Left or right rotation
 	{
-		if (sCurrent.piviot != 0)
+		if (sCurrent.piviot != 0) //Standard piece
 		{
 			//copy &rotate the piece to the temporary array
 			for (i = 0; i < 3; i++)
 				for (j = 0; j < 3; j++)
 					temp.size[2 - j][i] = sCurrent.size[i][j];
 		}
-		else
+		else //I piece
 		{
 			//copy &rotate the piece to the temporary array
 			for (i = 0; i < 4; i++)
@@ -364,14 +368,14 @@ void Game::RotateBlock(bool rotate)
 	}
 	else
 	{
-		if (sCurrent.piviot != 0)
+		if (sCurrent.piviot != 0) //Standard Piece
 		{
 			//copy &rotate the piece to the temporary array
 			for (i = 0; i < 3; i++)
 				for (j = 0; j < 3; j++)
 					temp.size[j][2 - i] = sCurrent.size[i][j];
 		}
-		else
+		else //I piece
 		{
 			//copy &rotate the piece to the temporary array
 			for (i = 0; i < 4; i++)
@@ -379,19 +383,19 @@ void Game::RotateBlock(bool rotate)
 					temp.size[j][3 - i] = sCurrent.size[i][j];
 		}
 	}
-	for (i = 0; i < 5; i++)
+	for (i = 0; i < 5; i++) //Kick table checking
 	{
 		if (sCurrent.piviot != 0)
 		{
-			x = StdSRS[sCurrent.state * 2 + right][i][0];
-			y = StdSRS[sCurrent.state * 2 + right][i][1];
+			x = StdSRS[sCurrent.state * 2 + rotate][i][0];
+			y = StdSRS[sCurrent.state * 2 + rotate][i][1];
 		}
 		else
 		{
-			x = ISRS[sCurrent.state * 2 + right][i][0];
-			y = ISRS[sCurrent.state * 2 + right][i][1];
+			x = ISRS[sCurrent.state * 2 + rotate][i][0];
+			y = ISRS[sCurrent.state * 2 + rotate][i][1];
 		}
-		if (!CollisionTest(temp, x, -y))
+		if (!CollisionTest(temp, x, -y)) //If it passed a check update current piece
 		{
 			sCurrent = temp;
 			int dstate = (sCurrent.state + change) % 4;
@@ -406,13 +410,13 @@ void Game::RotateBlock(bool rotate)
 void Game::Lock(int y)
 {
 	int i, j;
-	//new block time! add this &#111;ne to the list!
+	//Add block to the map
 	for (i = 0; i < 4; i++)
 		for (j = 0; j < 4; j++)
 			if (sCurrent.size[i][j] != MINONODRAW)
 				Map[sCurrent.x + i][sCurrent.y + j + y] = sCurrent.size[i][j];
 
-	//check for cleared row!
+	//check for cleared row
 	for (j = 0; j < TOTALHEIGHT; j++)
 	{
 		bool filled = true;
@@ -428,8 +432,9 @@ void Game::Lock(int y)
 
 void Game::Move(int x, int y)
 {
+	//TODO: Might be optimized
 	Tetramino test = sCurrent;
-	if (CollisionTest(test, x, y))
+	if (CollisionTest(test, x, y)) //Check for colisions, if not update location
 	{
 		if (y == 1)
 			Lock(0);
@@ -443,6 +448,7 @@ void Game::Move(int x, int y)
 
 void Game::FindLowest(Tetramino& test)
 {
+	//Update test tetramino to location of lowest
 	int i;
 	for (i = 0; i < TOTALHEIGHT; i++)
 		if (CollisionTest(test, 0, 1))
@@ -458,7 +464,7 @@ int Game::CollisionTest(Tetramino& test, int nx, int ny)
 
 	for (i = 0; i < 4; i++)
 		for (j = 0; j < 4; j++)
-			if (test.size[i][j] != MINONODRAW)
+			if (test.size[i][j] != MINONODRAW) //Check to see if piece collides with call or map
 			{
 				if (newx + i < 0 || newx + i > MAPWIDTH - 1 ||
 					newy + j < 0 || newy + j > TOTALHEIGHT - 1)
@@ -475,14 +481,12 @@ int Game::CollisionTest(Tetramino& test, int nx, int ny)
 void Game::RemoveRow(int row)
 {
 	int x, y;
-	int counter = 0;
-
+	//Remove row and move everything down
 	for (x = 0; x < MAPWIDTH; x++)
 		for (y = row; y > 0; y--)
 			Map[x][y] = Map[x][y - 1];
 
 }
-
 
 HWND Game::GetWindow()
 {
