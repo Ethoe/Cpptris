@@ -4,7 +4,6 @@ Game::Game()
 {
 	window = NULL;
 	instance = NULL;
-	int i, j, k;
 	//Kick tables for standard pieces
 	int StdSRSt[8][5][2] = { { {0, 0}, {-1, 0}, {-1, 1}, {0, -2}, {-1, -2} },
 		{ {0, 0}, {1, 0}, {1, 1}, {0, -2}, {1, -2} }, 
@@ -80,6 +79,7 @@ void Game::NewGame()
 {
 	std::srand(GetTickCount64()); //Random seed based on time
 	start_time = GetTickCount64();
+	total_time = GetTickCount64();
 	timer = 0;
 	GAMESTARTED = false;
 	//Clear the map
@@ -520,8 +520,9 @@ void Game::Paint()
 	BitBlt(hdc, 0, 0, MINOSIZE * HOLD + MINOSIZE * MAPWIDTH + MINOSIZE * GREY, MINOSIZE * MAPHEIGHT, bmoMap, 0, 0, SRCCOPY);
 	TextOut(hdc, 24, 0, L"Hold", 4);
 	TextOut(hdc, MAPWIDTH * MINOSIZE + MINOSIZE * HOLD + 24, 0, L"Next", 4);
-	wchar_t buffer[256];
-	wsprintfW(buffer, L"%d", sCurrent.state);
-	//TextOut(hdc, MAPWIDTH * MINOSIZE + MINOSIZE * HOLD + 24, 0, buffer, 1);
+	std::wstringstream wss;
+	double time = (GetTickCount64() - total_time) / 1000.0;
+	wss << "Time: " << time;
+	TextOut(hdc, 0, 64, wss.str().c_str(), 11);
 	EndPaint(window, &ps);
 }

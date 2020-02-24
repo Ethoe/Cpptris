@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <windows.h>
 #include <stdlib.h>
+#include <math.h>
+#include <sstream>
 #include "bitmapobject.h"
 
 
@@ -56,6 +58,7 @@ private:
 	Tetramino sHold;
 
 	DWORD start_time;
+	DWORD total_time;
 	int timer;
 	int Bag[14];
 	int BagCount;
